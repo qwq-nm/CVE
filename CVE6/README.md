@@ -8,7 +8,7 @@
 | **Vulnerability class** | CWE-78 — Improper Neutralization of Special Elements used in an OS Command |
 | **Related weakness** | CWE-121 — Stack-based Buffer Overflow (same value, same code path) |
 | **CVSS v3.1** | `CVSS:3.1/AV:A/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H` = **6.8 (Medium)** |
-| **Authentication required** | Administrator session (one settings change) |
+| **Authentication required** | Administrator session; the form handler that writes the option is static-only (§0) |
 | **Attack vector** | Adjacent network (LAN) |
 | **Impact** | Command execution as **root**; the value also crashes the System Log request |
 | **Status** | Confirmed (dynamic: vendor `ssi` CGI, injected command executed as root) |
@@ -155,7 +155,8 @@ validation to the host field, the reachable path would be blocked; that was not 
 
 ## 5. Impact
 
-- Command execution as root on the router; the admin UI process runs as uid 0.
+- Command execution as root on the router. The CGI ran as uid 0 inside the emulation
+  chroot; the uid of `ssi` on a shipped device was not measured.
 - Precondition: an authenticated admin session. The report does **not** claim a CSRF
   vector — `UI:N` is used because the victim does not interact with a crafted page;
   the attacker needs the admin credential (or an equivalent write primitive on the

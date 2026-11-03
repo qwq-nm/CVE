@@ -151,7 +151,9 @@ account=&pool=test&folder=../../NEW_OUTSIDE_DIR
 
 ## 5. Impact
 
-- Directory creation outside the intended share, with mode `0777`, as root.
+- Directory creation outside the intended share, with mode `0777`, as uid 0. The uid is
+  the one inherited from the emulation chroot; the uid of `httpd` on a shipped device was
+  not measured.
 - Demonstrated in `/tmp`, which is world-writable on this firmware; the impact is
   therefore limited to integrity (`I:L`). No file content is exposed (`C:N`), and no
   availability impact was demonstrated (`A:N`).

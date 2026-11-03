@@ -10,7 +10,7 @@ where the finding was reproduced dynamically — `poc/` and `evidence/`.
 | [CVE2](CVE2/) | TOTOLINK EX200 | — | CWE-121 stack buffer overflow, `setWiFiAclAddConfig` (`macAddress`) | — | advisory only |
 | [cve3](cve3/) | Tenda AC10U V1.0 | V15.03.06.48_multi_TDE01 | CWE-78 unauthenticated command injection, ATE service (UDP 7329) | 8.8 High | confirmed (emulation) |
 | [CVE4](CVE4/) | Tenda AC10U V1.0 | V15.03.06.48_multi_TDE01 | CWE-306 / CWE-798 unauthenticated `telnetd` start + shipped root credential | 8.8 High | confirmed (emulation) |
-| [CVE5](CVE5/) | TRENDnet TEW-751DR (also 752DRU / 733GR) | 1.03B01 | CWE-78 unauthenticated command injection via UPnP GENA `CALLBACK` header | 7.5 High | confirmed (script-generation replay) |
+| [CVE5](CVE5/) | TRENDnet TEW-751DR | 1.03B01 | CWE-78 unauthenticated command injection via UPnP GENA `CALLBACK` header | 7.5 High | confirmed on 751DR (script-generation replay); 752DRU shares the PHP files, 733GR shares `cgibin`, neither individually verified |
 | [CVE6](CVE6/) | TRENDnet TEW-824DRU | 1.00b18 | CWE-78 stored command injection in System Log settings (+ CWE-121) | 6.8 Medium | confirmed (vendor CGI, emulation) |
 | [CVE7](CVE7/) | ASUS RT-AC68U | 3.0.0.4.384_81049 | CWE-22 path traversal in AiDisk `create_sharedfolder` | 2.4 Low | confirmed (vendor httpd, emulation) |
 

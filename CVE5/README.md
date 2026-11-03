@@ -199,7 +199,9 @@ both binaries exist, so the injected segment executes with the rest of the line.
 ## 5. Impact
 
 - **Conditional** root command execution on the LAN side: the command is injected into a
-  script that the CGI schedules for execution by the UPnP timer. The script content and
+  script that the CGI schedules for execution by the UPnP timer. In the replay the script
+  ran as uid 0 in the chroot; the uid of the PHP/timer path on a shipped device was not
+  measured. The script content and
   the shell behaviour are proven; the timer actually firing is established statically
   (Section 3.2), not observed. This is why `AC:H` is used and why the impact is
   described as conditional.
