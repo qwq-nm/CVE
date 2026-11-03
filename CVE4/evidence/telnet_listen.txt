@@ -1,0 +1,32 @@
+C-3 telnetd activation transcript (SANITIZED)
+==============================================
+
+Target      : Tenda AC10U V1.0, firmware V15.03.06.48_multi_TDE01
+Environment : QEMU user-mode (qemu-mipsel-static) + chroot over the extracted rootfs
+Precondition: factory/reset state, sys.userpass empty
+
+Static entry point
+------------------
+GET /goform/telnet
+  -> R7WebsSecurityHandler@0x434e80  (bypass while g_Pass[0] == 0)
+  -> TendaTelnet@0x45bb48
+     -> doSystemCmd("killall -9 telnetd")
+     -> doSystemCmd("telnetd -b %s &", GetValue("lan.ip"))
+
+Observed in emulation
+---------------------
+[1] Equivalent handler command executed (see note):
+    /usr/sbin/telnetd -b 192.168.0.1
+
+[2] TCP 192.168.0.1:23
+    -> LISTEN
+
+Note
+----
+`GetValue("lan.ip")` reads bare NVRAM backed by flash. In this emulation the NVRAM
+value is empty, so the HTTP request path was not closed end-to-end; the same
+`doSystemCmd("telnetd -b %s &")` command was executed directly. The HTTP entry point
+is established statically. On physical hardware, `GET /goform/telnet` is the first
+verification point.
+
+No credential is included in this transcript.
