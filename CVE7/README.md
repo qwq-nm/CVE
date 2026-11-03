@@ -7,10 +7,10 @@
 | **Platform** | ARM little-endian, uClibc; closed-source `httpd` + `libdisk.so` |
 | **Vulnerability class** | CWE-22 — Improper Limitation of a Pathname to a Restricted Directory |
 | **Related weakness** | CWE-73 — External Control of File Name or Path |
-| **CVSS v3.1** | `CVSS:3.1/AV:A/AC:L/PR:H/UI:N/S:U/C:N/I:L/A:L` = **4.2 (Medium)** |
+| **CVSS v3.1** | `CVSS:3.1/AV:A/AC:L/PR:H/UI:N/S:U/C:N/I:L/A:N` = **2.4 (Low)** |
 | **Authentication required** | Administrator session (`asus_token`) |
 | **Attack vector** | Adjacent network (LAN) |
-| **Impact** | Directory creation (mode `0777`) outside the shared folder; demonstrated in `/tmp`, not on persistent storage |
+| **Impact** | Directory creation (mode `0777`) outside the shared folder; demonstrated in `/tmp`, not on persistent storage. Integrity only (`C:N/I:L/A:N`) |
 | **Status** | Confirmed (dynamic: vendor `httpd` in emulation, real ext4 mount) |
 | **CVE ID** | *Requested — VulDB submission pending* |
 | **Disclosure** | Public advisory (this repository) |
@@ -153,7 +153,8 @@ account=&pool=test&folder=../../NEW_OUTSIDE_DIR
 
 - Directory creation outside the intended share, with mode `0777`, as root.
 - Demonstrated in `/tmp`, which is world-writable on this firmware; the impact is
-  therefore limited: integrity and availability only, no file content exposed (`C:N`).
+  therefore limited to integrity (`I:L`). No file content is exposed (`C:N`), and no
+  availability impact was demonstrated (`A:N`).
 - Writing to persistent or read-only partitions was **not** demonstrated (`/jffs`
   returned `Action5`), and no escalation chain is claimed.
 
@@ -192,7 +193,7 @@ are specific to this firmware, and the report does not claim shared code with th
 | 2026-11-03 | `httpd` emulation built; traversal reproduced on a real ext4 mount |
 | 2026-11-03 | External adversarial review (`gpt-5` via `gpt_ask.py review` profile): `not_refuted` |
 | 2026-11-03 | Sibling `modify_sharedfolder` withdrawn as a false positive (EXDEV) |
-| 2026-11-03 | **Erratum**: `/etc` is a symlink to `tmp/etc`, so the `/etc/...` run landed in tmpfs; the "any root-writable path" inference was withdrawn. CVSS 3.1 base 3.5 → **4.2** (vector unchanged; the old score did not match `AC:L`), Low → Medium |
+| 2026-11-03 | **Erratum**: `/etc` is a symlink to `tmp/etc`, so the `/etc/...` run landed in tmpfs; the "any root-writable path" inference was withdrawn. As no availability impact was demonstrated, the vector became `C:N/I:L/A:N` and the base score **2.4 (Low)** |
 | 2026-11-03 | CVE requested via VulDB (vendor/CNA channel); public advisory published here |
 
 No vendor response had been received at publication time; the vendor was contacted

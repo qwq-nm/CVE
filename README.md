@@ -11,8 +11,8 @@ where the finding was reproduced dynamically — `poc/` and `evidence/`.
 | [cve3](cve3/) | Tenda AC10U V1.0 | V15.03.06.48_multi_TDE01 | CWE-78 unauthenticated command injection, ATE service (UDP 7329) | 8.8 High | confirmed (emulation) |
 | [CVE4](CVE4/) | Tenda AC10U V1.0 | V15.03.06.48_multi_TDE01 | CWE-306 / CWE-798 unauthenticated `telnetd` start + shipped root credential | 8.8 High | confirmed (emulation) |
 | [CVE5](CVE5/) | TRENDnet TEW-751DR (also 752DRU / 733GR) | 1.03B01 | CWE-78 unauthenticated command injection via UPnP GENA `CALLBACK` header | 7.5 High | confirmed (script-generation replay) |
-| [CVE6](CVE6/) | TRENDnet TEW-824DRU | 1.00b18 | CWE-78 stored command injection in System Log settings (+ CWE-121) | 7.6 High | confirmed (vendor CGI, emulation) |
-| [CVE7](CVE7/) | ASUS RT-AC68U | 3.0.0.4.384_81049 | CWE-22 path traversal in AiDisk `create_sharedfolder` | 4.2 Medium | confirmed (vendor httpd, emulation) |
+| [CVE6](CVE6/) | TRENDnet TEW-824DRU | 1.00b18 | CWE-78 stored command injection in System Log settings (+ CWE-121) | 6.8 Medium | confirmed (vendor CGI, emulation) |
+| [CVE7](CVE7/) | ASUS RT-AC68U | 3.0.0.4.384_81049 | CWE-22 path traversal in AiDisk `create_sharedfolder` | 2.4 Low | confirmed (vendor httpd, emulation) |
 
 Notes on evidence levels:
 
@@ -30,12 +30,13 @@ the advisory here is the authoritative public text.
 
 ## Scoring note
 
-CVSS v3.1 base scores in this repository are recomputed from the published vector.
-Two entries were corrected after publication review:
+CVSS v3.1 base scores are recomputed from the published vector and checked against known
+anchor vectors before publication. The `PR:H` weight is `0.27` when `S:U` and `0.50` when
+`S:C`; swapping the two silently produces plausible-but-wrong scores.
 
-- CVE6: `AV:A/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H` = **7.6** (was stated as 6.8).
-- CVE7: `AV:A/AC:L/PR:H/UI:N/S:U/C:N/I:L/A:L` = **4.2** (was stated as 3.5, a value that
-  corresponds to `AC:H`).
+- CVE6: `AV:A/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H` = **6.8 (Medium)** — re-verified.
+- CVE7: impact narrowed to integrity only, because no availability impact was
+  demonstrated; vector `C:N/I:L/A:N` = **2.4 (Low)** (an earlier draft used `A:L` and 3.5).
 
 ## Disclosure policy
 

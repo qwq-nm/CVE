@@ -7,7 +7,7 @@
 | **Platform** | MIPS32 little-endian, uClibc; admin UI served by `/www/cgi/ssi` |
 | **Vulnerability class** | CWE-78 — Improper Neutralization of Special Elements used in an OS Command |
 | **Related weakness** | CWE-121 — Stack-based Buffer Overflow (same value, same code path) |
-| **CVSS v3.1** | `CVSS:3.1/AV:A/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H` = **7.6 (High)** |
+| **CVSS v3.1** | `CVSS:3.1/AV:A/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H` = **6.8 (Medium)** |
 | **Authentication required** | Administrator session (one settings change) |
 | **Attack vector** | Adjacent network (LAN) |
 | **Impact** | Command execution as **root**; the value also crashes the System Log request |
@@ -149,6 +149,10 @@ and restores the file on exit. Expected output:
 Only one variable changes between the control and the trigger run: the
 `syslog_server` value.
 
+The DUT-side write path is not exercised: the value is placed in `/etc/config/cameo`
+directly, i.e. the same UCI store the page writes. If the form applied its own
+validation to the host field, the reachable path would be blocked; that was not tested.
+
 ## 5. Impact
 
 - Command execution as root on the router; the admin UI process runs as uid 0.
@@ -173,7 +177,8 @@ line; this report does not claim shared code with those products.
   literal; reject everything else.
 - Build the `syslogd` argument vector with `execv()` instead of a shell string.
 - Replace `strcpy()` with a bounded copy (the destination is 24 bytes).
-- Add a CSRF token and a session check to the page handler.
+- Add an origin/session check to the state-changing request (defence in depth; this
+  report does not claim a CSRF vector).
 - Vendor-side: remove the shell indirection entirely; do not pass configuration values
   through `system()`.
 
@@ -185,7 +190,7 @@ line; this report does not claim shared code with those products.
 | 2026-10-31 | Dynamic reproduction with the vendor `ssi`: command execution and overflow sweep |
 | 2026-11-03 | External adversarial review (`gpt-5` via `gpt_ask.py review` profile): `not_refuted` |
 | 2026-11-03 | CVE requested via VulDB (vendor/CNA channel) |
-| 2026-11-03 | **Severity corrected**: CVSS 3.1 base 6.8 → **7.6**. The vector `AV:A/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H` was unchanged but had been paired with the wrong score; recomputation gives 7.6 (High) |
+| 2026-11-03 | Severity re-verified: `AV:A/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H` = **6.8 (Medium)** under CVSS 3.1 (`PR:H` weight 0.27 for `S:U`); unchanged |
 | 2026-11-03 | Public advisory published in this repository |
 
 No vendor response had been received at publication time; the vendor was contacted

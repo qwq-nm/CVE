@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| **Product** | TRENDnet TEW-751DR (N600 wireless router); same PHP files in TEW-752DRU and TEW-733GR |
+| **Product** | TRENDnet TEW-751DR (N600 wireless router); same PHP files verified in TEW-752DRU; TEW-733GR shares the same `cgibin` binary |
 | **Firmware** | 1.03B01 (all three models) |
 | **Platform** | MIPS32 little-endian, uClibc; UPnP HTTP service on TCP 49152 |
 | **Vulnerability class** | CWE-78 — Improper Neutralization of Special Elements used in an OS Command |
@@ -25,8 +25,8 @@
 > `AC:H` is used because the write path also requires `GENA_notify_init()` to resolve the
 > UPnP `INF_UID` node (`XNODE_getpathbytarget(...)`), which depends on the device's `ServerId`
 > configuration; when it does not resolve, no script is written. That is an attacker-independent
-> condition, not a confidence discount. If it is confirmed to be always set on shipped devices,
-> `AC:L` applies → 8.8.
+> condition, not a confidence discount. The published score is 7.5; no alternative score is
+> claimed until that condition is measured on a shipped device.
 
 ---
 
@@ -44,8 +44,8 @@
 ## 1. Summary
 
 `/gena.cgi` is the UPnP event endpoint, reachable at `http://<device>:49152/gena.cgi`.
-`genacgi_main` checks only `REQUEST_METHOD` and dispatches `SUBSCRIBE` to
-`FUN_0040e740`, without any session or credential check. That function takes the
+`genacgi_main` checks `REQUEST_METHOD` and that the query string starts with `?service=`,
+then dispatches `SUBSCRIBE` to `FUN_0040e740`, without any session or credential check. That function takes the
 `CALLBACK` request header, strips the angle brackets and the `http://` prefix, splits
 the remainder at the first `/` into `host` and `uri`, and passes both to
 `/htdocs/upnp/run.NOTIFY.php`, i.e. to `htdocs/upnpinc/gena.php::GENA_notify_init()`.
@@ -79,7 +79,7 @@ same firmware: different input (HTTP header vs. query string), different sink
 |---|---|
 | Firmware image SHA-256 (TEW-751DR 1.03B01) | `fe1168fc2b2bf4744df3a7145eeaf11b2c5272ae502c8f2993e5c614499322ec` |
 | Firmware image SHA-256 (TEW-752DRU 1.03B01) | `facbd373af3568a064e34f1a1b74f2840bd7fd5b6f3e54fe7fdcc66f7779c41a` |
-| `htdocs/upnpinc/gena.php` | `2934eb2052ea14a0360efaa76567f966f89ff7c45178743d555b300e7b70a5cb` (identical on 751DR and 752DRU) |
+| `htdocs/upnpinc/gena.php` | `2934eb2052ea14a0360efaa76567f966f89ff7c45178743d555b300e7b70a5cb` (identical on 751DR and 752DRU; **not** compared on 733GR) |
 | `htdocs/upnp/run.NOTIFY.php` | `5dc9693fe1e736e79d5cb87d9489aa74b008dbe0ebe3ef2f0029dba52a1163ad` (identical) |
 | `etc/services/HTTP/httpsvcs.php` | `491199729c4fc17c6db57afd9c8c8e8b7f2f2f263113e72e57f0631e0f95eccd` (identical) |
 | `htdocs/cgibin` | 751DR / TEW-733GR: `e27547940d0ae75233fc6b2b64c50d37fc3b55d4dea9d86bbb86dd448f08a7eb` (byte-identical on both); TEW-752DRU: different binary (md5 `6b326314eddda351877c220a86aba9f3`), decompiled independently |
@@ -166,6 +166,10 @@ python3 poc/gena_replay.py --rootfs <rootfs> --host 10.0.0.9 \
 # 2) execute it with the firmware's own shell (path is inside the rootfs)
 sudo chroot <rootfs> /bin/sh /var/tmp/gena/trg/WANIPConn1_1.sh
 ```
+
+`gena_replay.py` writes `<outdir>/WANIPConn1_1.sh` by default (use `--shell-file` to pick
+another name). The device itself schedules `/var/run/<service>_<pid>.sh`; the replay uses
+a fixed name in `/var/tmp/gena` so it does not depend on the CGI's pid.
 
 `poc/replay_gena_callback.sh` does both steps for a control URI (`aaa`) and a trigger
 URI (`aaa;touch …;bbb`), and prints the `HDR_URL` line of each generated script. The
