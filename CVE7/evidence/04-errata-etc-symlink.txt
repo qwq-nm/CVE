@@ -1,0 +1,42 @@
+A6 — 勘误：`/etc/CNVD_ETC_DIR` 不是"root 755 目录下的写入"证据
+==============================================================
+日期: 2026-11-03
+结论编号: C-3（ASUS RT-AC68U 3.0.0.4.384_81049，create_sharedfolder 路径穿越）
+性质: 对 A5 动态复现中"影响范围"表述的自我更正（漏洞本体不变）
+
+## 1. 原表述
+
+A5 与报告中写过：
+    folder=../../etc/CNVD_ETC_DIR  ->  /etc/CNVD_ETC_DIR（drwxrwxrwx）
+    因为 /etc 是 root 755，所以"不是只能落在世界可写的 /tmp"
+并据此外推"httpd 进程（root）能写的地方都能建目录"。
+
+## 2. 复核
+
+    $ ls -ld rootfs/etc
+    lrwxrwxrwx 1 root root 7 Sep  4  2019 rootfs/etc -> tmp/etc
+    $ ls -ld rootfs/etc/CNVD_ETC_DIR rootfs/tmp/etc/CNVD_ETC_DIR
+    drwxrwxrwx 2 root root 4096 rootfs/etc/CNVD_ETC_DIR
+    drwxrwxrwx 2 root root 4096 rootfs/tmp/etc/CNVD_ETC_DIR
+
+共享挂载点是 `rootfs/tmp/mnt/test`，`folder=../../etc/X` 解析为 `rootfs/tmp/etc/X`；
+`rootfs/etc` 只是指向 `tmp/etc` 的符号链接，所以两条路径指向同一个目录。
+该测试落在 **tmpfs** 内，**没有**证明能写入 root 755 的只读/持久化目录。
+
+## 3. 仍成立的结论
+
+- `add_folder()` 无 `..` 校验，`folder=../../NEW_OUTSIDE_DIR` 确实在共享目录之外
+  （`rootfs/tmp/NEW_OUTSIDE_DIR`）建出 0777 目录；`mkdir(2)` 不受挂载点限制。
+- 该 endpoint 只要求 `pool`/`folder` 非空（`account` 可为空），PoC 里 `account=` 为空即因此。
+
+## 4. 不再主张的结论
+
+- "任意 root 可写路径都能建目录" —— 未证实；`/etc` 与共享目录同在 tmpfs。
+- "可以写到持久化分区" —— `folder=../../jffs/CNVD_JFFS_DIR` 在仿真里返回 `Action5`、未创建。
+
+## 5. 影响
+
+- 影响面按"共享目录之外（实测 /tmp）建 0777 目录"计，C:N/I:L/A:L，
+  CVSS `AV:A/AC:L/PR:H/UI:N/S:U/C:N/I:L/A:L` = **4.2（中危）**。
+  （此前写作 3.5 低危，与向量不自洽：3.5 对应 AC:H，而该请求无需额外条件。）
+- 报告、form、VulDB payload 已同步更正；VulDB 提交时以 4.2 为准。

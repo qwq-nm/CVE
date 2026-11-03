@@ -1,0 +1,51 @@
+# CVE advisories
+
+Public advisories for vulnerabilities found during firmware and embedded-device
+research. Each directory is self-contained: `README.md` (advisory), `LICENSE`, and —
+where the finding was reproduced dynamically — `poc/` and `evidence/`.
+
+| Entry | Product | Firmware / version | Weakness | CVSS v3.1 | Status |
+|---|---|---|---|---|---|
+| [CVE1](CVE1/) | TOTOLINK EX200 | — | CWE-121 stack buffer overflow, `setStaticDhcpConfig` (`comment`) | — | advisory only |
+| [CVE2](CVE2/) | TOTOLINK EX200 | — | CWE-121 stack buffer overflow, `setWiFiAclAddConfig` (`macAddress`) | — | advisory only |
+| [cve3](cve3/) | Tenda AC10U V1.0 | V15.03.06.48_multi_TDE01 | CWE-78 unauthenticated command injection, ATE service (UDP 7329) | 8.8 High | confirmed (emulation) |
+| [CVE4](CVE4/) | Tenda AC10U V1.0 | V15.03.06.48_multi_TDE01 | CWE-306 / CWE-798 unauthenticated `telnetd` start + shipped root credential | 8.8 High | confirmed (emulation) |
+| [CVE5](CVE5/) | TRENDnet TEW-751DR (also 752DRU / 733GR) | 1.03B01 | CWE-78 unauthenticated command injection via UPnP GENA `CALLBACK` header | 7.5 High | confirmed (script-generation replay) |
+| [CVE6](CVE6/) | TRENDnet TEW-824DRU | 1.00b18 | CWE-78 stored command injection in System Log settings (+ CWE-121) | 7.6 High | confirmed (vendor CGI, emulation) |
+| [CVE7](CVE7/) | ASUS RT-AC68U | 3.0.0.4.384_81049 | CWE-22 path traversal in AiDisk `create_sharedfolder` | 4.2 Medium | confirmed (vendor httpd, emulation) |
+
+Notes on evidence levels:
+
+- **confirmed (emulation)** — the vulnerable vendor binary or script was executed in a
+  QEMU user-mode chroot and produced the documented effect. Physical hardware was not
+  used. Each advisory states exactly which hop was not exercised.
+- **script-generation replay** (CVE5) — the vendor's PHP generated the shell script and
+  the vendor's shell executed it; the PHP interpreter/timer hop on the device is
+  established statically and is not claimed as executed.
+- **advisory only** — static analysis without a dynamic reproduction in this repository.
+
+Entries are numbered in publication order. Local submission packages (with the full
+Chinese/English report groups and CNVD forms where applicable) are tracked separately;
+the advisory here is the authoritative public text.
+
+## Scoring note
+
+CVSS v3.1 base scores in this repository are recomputed from the published vector.
+Two entries were corrected after publication review:
+
+- CVE6: `AV:A/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H` = **7.6** (was stated as 6.8).
+- CVE7: `AV:A/AC:L/PR:H/UI:N/S:U/C:N/I:L/A:L` = **4.2** (was stated as 3.5, a value that
+  corresponds to `AC:H`).
+
+## Disclosure policy
+
+- Findings are published only after the vendor or a CNA has been given the material,
+  or after the coordinated-disclosure window has expired.
+- No credential, persistence mechanism, or turnkey exploitation payload is published.
+- Proof-of-concept code is limited to what is needed to verify the defect, and is
+  marked with its authorization requirements.
+- No personal information about the researcher is included.
+
+## License
+
+Each directory is released under the MIT License (see the `LICENSE` file in it).
