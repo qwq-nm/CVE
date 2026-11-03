@@ -12,7 +12,7 @@
 | **Attack vector** | Adjacent network (UPnP service on the LAN) |
 | **Impact** | Command execution as **root**, conditional on the device-side timer path (Section 5) |
 | **Status** | Confirmed at the script-generation level (vendor `gena.php` generates the script, vendor shell executes it) |
-| **CVE ID** | *Submitted to VulDB on 2026-11-03 (CNA moderation pending)* |
+| **CVE ID** | *Submitted to VulDB 2026-11-03 — entry 1071896 (moderation pending)* |
 | **Disclosure** | Public advisory (this repository); earlier copy at https://gist.github.com/qwq-nm/70b4fd27c21fd32e68f929261c01757f |
 
 > **Scope note.** The device-side `phpserver` (PHP interpreter) and the `xmldbc` timer were not

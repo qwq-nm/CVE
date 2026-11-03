@@ -12,7 +12,7 @@
 | **Attack vector** | Adjacent network (LAN) |
 | **Impact** | Command execution as **root**; the value also crashes the System Log request |
 | **Status** | Confirmed (dynamic: vendor `ssi` CGI, injected command executed as root) |
-| **CVE ID** | *Submitted to VulDB on 2026-11-03 (CNA moderation pending)* |
+| **CVE ID** | *Submitted to VulDB 2026-10-31 — entry 1067945 (moderation pending)* |
 | **Disclosure** | Public advisory (this repository); earlier copy at https://gist.github.com/qwq-nm/b3027508114354faa37384f9262a5891 |
 
 > **Scope note.** The device-side `uhttpd` → `ssi` HTTP hop was not exercised: the

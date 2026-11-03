@@ -11,7 +11,7 @@
 | **Attack vector** | Adjacent network (UPnP/WFA control plane) |
 | **Impact** | Remote crash of the CGI (SIGSEGV); code execution **not** demonstrated |
 | **Status** | Confirmed (dynamic: SIGSEGV reproduced, boundary measured) |
-| **CVE ID** | *Submitted to VulDB on 2026-11-03 (CNA moderation pending)* |
+| **CVE ID** | *Submitted to VulDB 2026-10-31 — entry 1067949 (moderation pending; two earlier duplicates 1066758 / 1066849 were also filed)* |
 | **Disclosure** | Public advisory (this repository); earlier copy at https://gist.github.com/qwq-nm/4120495fb8a560921da0f102fa90fa0d |
 
 > **Scope note.** The overflow is proven to the level of "unauthenticated request kills the

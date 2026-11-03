@@ -12,7 +12,7 @@
 | **Attack vector** | Adjacent network (UPnP control plane) |
 | **Impact** | Arbitrary command execution as **root** (uid 0 in the emulation) |
 | **Status** | Confirmed (dynamic: marker file created by the injected command) |
-| **CVE ID** | *Submitted to VulDB on 2026-11-03 (CNA moderation pending)* |
+| **CVE ID** | *Submitted to VulDB 2026-10-30 — entry 1066878 (moderation pending)* |
 | **Disclosure** | Public advisory (this repository); earlier copy at https://gist.github.com/qwq-nm/251e7963d59f41beea2c7ad5ff7ca39f |
 
 > **Scope note.** The CGI was executed with the environment the vendor web server sets,
