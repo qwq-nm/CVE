@@ -11,7 +11,7 @@
 | **Attack vector** | Adjacent network (UPnP/WFA control plane) |
 | **Impact** | Remote crash of the CGI (SIGSEGV); code execution **not** demonstrated |
 | **Status** | Confirmed (dynamic: SIGSEGV reproduced, boundary measured) |
-| **CVE ID** | *Requested — VulDB submission pending* |
+| **CVE ID** | *Submitted to VulDB on 2026-11-03 (CNA moderation pending)* |
 | **Disclosure** | Public advisory (this repository); earlier copy at https://gist.github.com/qwq-nm/4120495fb8a560921da0f102fa90fa0d |
 
 > **Scope note.** The overflow is proven to the level of "unauthenticated request kills the
@@ -150,6 +150,7 @@ separate defect (different endpoint, different sink) and is reported separately.
 | 2026-10-30 | Static analysis of `wfadev_main` / `FUN_0040ed90` |
 | 2026-10-31 | Boundary measured in emulation (3900 ok, 3940 SIGSEGV) |
 | 2026-11-03 | CVE requested via VulDB (vendor/CNA channel) |
+| 2026-11-03 | Submitted to VulDB (CNA channel); moderation pending |
 | 2026-11-03 | Public advisory published here |
 
 ## 9. Notes on scope and integrity

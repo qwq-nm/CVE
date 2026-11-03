@@ -12,7 +12,7 @@
 | **Attack vector** | Adjacent network (LAN) |
 | **Impact** | Directory creation (mode `0777`) outside the shared folder; demonstrated in `/tmp`, not on persistent storage. Integrity only (`C:N/I:L/A:N`) |
 | **Status** | Confirmed (dynamic: vendor `httpd` in emulation, real ext4 mount) |
-| **CVE ID** | *Requested — VulDB submission pending* |
+| **CVE ID** | *Submitted to VulDB on 2026-11-03 (CNA moderation pending)* |
 | **Disclosure** | Public advisory (this repository) |
 
 > **Scope note.** The `httpd` binary under test is the vendor's own, run with

@@ -26,6 +26,9 @@ Notes on evidence levels:
   established statically and is not claimed as executed.
 - **advisory only** — static analysis without a dynamic reproduction in this repository.
 
+All five advisories added in November 2026 (CVE5–CVE9) were submitted to VulDB on
+2026-11-03; VulDB moderation takes weeks, so the entries may not be public yet.
+
 Entries are numbered in publication order. Local submission packages (with the full
 Chinese/English report groups and CNVD forms where applicable) are tracked separately;
 the advisory here is the authoritative public text.

@@ -12,7 +12,7 @@
 | **Attack vector** | Adjacent network (LAN) |
 | **Impact** | Command execution as **root**; the value also crashes the System Log request |
 | **Status** | Confirmed (dynamic: vendor `ssi` CGI, injected command executed as root) |
-| **CVE ID** | *Requested — VulDB submission pending* |
+| **CVE ID** | *Submitted to VulDB on 2026-11-03 (CNA moderation pending)* |
 | **Disclosure** | Public advisory (this repository); earlier copy at https://gist.github.com/qwq-nm/b3027508114354faa37384f9262a5891 |
 
 > **Scope note.** The device-side `uhttpd` → `ssi` HTTP hop was not exercised: the
@@ -192,6 +192,7 @@ line; this report does not claim shared code with those products.
 | 2026-11-03 | External adversarial review (`gpt-5` via `gpt_ask.py review` profile): `not_refuted` |
 | 2026-11-03 | CVE requested via VulDB (vendor/CNA channel) |
 | 2026-11-03 | Severity re-verified: `AV:A/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H` = **6.8 (Medium)** under CVSS 3.1 (`PR:H` weight 0.27 for `S:U`); unchanged |
+| 2026-11-03 | Submitted to VulDB (CNA channel); moderation pending |
 | 2026-11-03 | Public advisory published in this repository |
 
 No vendor response had been received at publication time; the vendor was contacted

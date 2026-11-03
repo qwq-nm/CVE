@@ -12,7 +12,7 @@
 | **Attack vector** | Adjacent network (UPnP control plane) |
 | **Impact** | Arbitrary command execution as **root** (uid 0 in the emulation) |
 | **Status** | Confirmed (dynamic: marker file created by the injected command) |
-| **CVE ID** | *Requested — VulDB submission pending* |
+| **CVE ID** | *Submitted to VulDB on 2026-11-03 (CNA moderation pending)* |
 | **Disclosure** | Public advisory (this repository); earlier copy at https://gist.github.com/qwq-nm/251e7963d59f41beea2c7ad5ff7ca39f |
 
 > **Scope note.** The CGI was executed with the environment the vendor web server sets,
@@ -153,6 +153,7 @@ are reported separately.
 | 2026-10-30 | Static analysis of `soapcgi_main`; command execution reproduced in emulation |
 | 2026-10-31 | HTTP capture of control / listing / file side effect |
 | 2026-11-03 | CVE requested via VulDB (vendor/CNA channel) |
+| 2026-11-03 | Submitted to VulDB (CNA channel); moderation pending |
 | 2026-11-03 | Public advisory published here |
 
 ## 9. Notes on scope and integrity
